@@ -1,0 +1,299 @@
+name: Tree-sitter Grammar Setup
+description: Install tree-sitter library/CLI and selected language grammars
+
+branding:
+  color: green
+  icon: package
+
+inputs:
+  # Tree-sitter library/CLI options (passed to tree-sitter/setup-action)
+  install-cli:
+    description: Install the tree-sitter CLI
+    default: "false"
+  install-lib:
+    description: Install the tree-sitter library (libtree-sitter)
+    default: "true"
+  tree-sitter-ref:
+    description: A tree-sitter commit, tag, or branch
+    default: latest
+
+  # Rust toolchain options
+  setup-rust:
+    description: Install Rust toolchain (required for tree_stump gem and CLI build)
+    default: "false"
+  rust-toolchain:
+    description: Rust toolchain version (stable, nightly, or specific version)
+    default: stable
+
+  # Java/jtreesitter options (for JRuby Java backend)
+  setup-java:
+    description: Install Java JDK (required for jtreesitter/JRuby)
+    default: "false"
+  java-version:
+    description: Java version to install
+    default: "23"
+  java-distribution:
+    description: Java distribution (temurin, zulu, corretto, etc.)
+    default: temurin
+  setup-jtreesitter:
+    description: Download jtreesitter JAR from Maven Central
+    default: "false"
+  jtreesitter-version:
+    description: jtreesitter version to download from Maven Central
+    default: "0.24.0"
+  jtreesitter-install-dir:
+    description: Directory to install jtreesitter JAR
+    default: /usr/local/share/java
+
+  # Grammar selections (all default to false - opt-in)
+  grammar-bash:
+    description: Install tree-sitter-bash grammar
+    default: "false"
+  grammar-json:
+    description: Install tree-sitter-json grammar
+    default: "false"
+  grammar-jsonc:
+    description: Install tree-sitter-jsonc grammar
+    default: "false"
+  grammar-toml:
+    description: Install tree-sitter-toml grammar
+    default: "false"
+
+  # Grammar installation options
+  grammar-install-prefix:
+    description: Installation prefix for grammar libraries
+    default: /usr/local
+
+outputs:
+  grammars-installed:
+    description: Comma-separated list of installed grammar names
+    value: ${{ steps.install-grammars.outputs.installed }}
+  lib-path:
+    description: Path to installed grammar libraries
+    value: ${{ inputs.grammar-install-prefix }}/lib
+  rust-installed:
+    description: Whether Rust toolchain was installed
+    value: ${{ inputs.setup-rust }}
+  java-installed:
+    description: Whether Java JDK was installed
+    value: ${{ inputs.setup-java }}
+  jtreesitter-installed:
+    description: Whether jtreesitter JAR was installed
+    value: ${{ inputs.setup-jtreesitter }}
+  jtreesitter-jar-path:
+    description: Path to jtreesitter JAR file
+    value: ${{ inputs.jtreesitter-install-dir }}/jtreesitter-${{ inputs.jtreesitter-version }}.jar
+
+runs:
+  using: composite
+  steps:
+    # Install Java JDK if requested (for jtreesitter/JRuby)
+    - name: Set up Java
+      if: inputs.setup-java == 'true' || inputs.setup-jtreesitter == 'true'
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+
+    # Download jtreesitter JAR from Maven Central
+    - name: Install jtreesitter from Maven Central
+      if: inputs.setup-jtreesitter == 'true'
+      shell: bash
+      env:
+        JTREESITTER_VERSION: ${{ inputs.jtreesitter-version }}
+        INSTALL_DIR: ${{ inputs.jtreesitter-install-dir }}
+      run: |
+        set -euo pipefail
+        
+        echo "::group::Installing jtreesitter ${JTREESITTER_VERSION}"
+        
+        # Create install directory
+        sudo mkdir -p "${INSTALL_DIR}"
+        
+        # Download jtreesitter JAR from Maven Central
+        JAR_URL="https://repo1.maven.org/maven2/io/github/tree-sitter/jtreesitter/${JTREESITTER_VERSION}/jtreesitter-${JTREESITTER_VERSION}.jar"
+        JAR_PATH="${INSTALL_DIR}/jtreesitter-${JTREESITTER_VERSION}.jar"
+        
+        echo "Downloading from: ${JAR_URL}"
+        if ! sudo curl -fsSL "${JAR_URL}" -o "${JAR_PATH}"; then
+          echo "::error::Failed to download jtreesitter from Maven Central"
+          exit 1
+        fi
+        
+        echo "Installed to: ${JAR_PATH}"
+        ls -la "${JAR_PATH}"
+        
+        echo "::endgroup::"
+        echo "✅ jtreesitter ${JTREESITTER_VERSION} installed successfully"
+
+    # Configure Java environment variables for jtreesitter
+    - name: Configure jtreesitter paths
+      if: inputs.setup-jtreesitter == 'true'
+      shell: bash
+      env:
+        JTREESITTER_VERSION: ${{ inputs.jtreesitter-version }}
+        INSTALL_DIR: ${{ inputs.jtreesitter-install-dir }}
+      run: |
+        JAR_PATH="${INSTALL_DIR}/jtreesitter-${JTREESITTER_VERSION}.jar"
+        
+        # Set TREE_SITTER_JAVA_JARS_DIR for tree_haver Java backend
+        echo "TREE_SITTER_JAVA_JARS_DIR=${INSTALL_DIR}" >> "$GITHUB_ENV"
+        
+        # Add to CLASSPATH if not already present
+        if [[ ":$CLASSPATH:" != *":${JAR_PATH}:"* ]]; then
+          echo "CLASSPATH=${JAR_PATH}${CLASSPATH:+:$CLASSPATH}" >> "$GITHUB_ENV"
+        fi
+        
+        echo "jtreesitter environment configured"
+
+    # Install Rust toolchain if requested (for tree_stump gem or CLI build)
+    - name: Install Rust toolchain
+      if: inputs.setup-rust == 'true'
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+
+    # Use official tree-sitter/setup-action for library and CLI
+    - name: Install tree-sitter library and CLI
+      uses: tree-sitter/setup-action@v2
+      with:
+        install-cli: ${{ inputs.install-cli }}
+        install-lib: ${{ inputs.install-lib }}
+        tree-sitter-ref: ${{ inputs.tree-sitter-ref }}
+        rust-toolchain: ${{ inputs.rust-toolchain }}
+
+    # Build and install selected grammars
+    - name: Install selected grammars
+      id: install-grammars
+      shell: bash
+      env:
+        INSTALL_PREFIX: ${{ inputs.grammar-install-prefix }}
+        GRAMMAR_BASH: ${{ inputs.grammar-bash }}
+        GRAMMAR_JSON: ${{ inputs.grammar-json }}
+        GRAMMAR_JSONC: ${{ inputs.grammar-jsonc }}
+        GRAMMAR_TOML: ${{ inputs.grammar-toml }}
+      run: |
+        set -euo pipefail
+
+        # Grammar URL mapping
+        # Format: "url|branch|type" where type is optional (default: github, alternative: direct)
+        declare -A GRAMMAR_URLS
+        GRAMMAR_URLS["bash"]="https://github.com/tree-sitter/tree-sitter-bash|master"
+        GRAMMAR_URLS["json"]="https://github.com/tree-sitter/tree-sitter-json|master"
+        GRAMMAR_URLS["jsonc"]="https://gitlab.com/WhyNotHugo/tree-sitter-jsonc/-/archive/main/tree-sitter-jsonc-main.zip|main|direct"
+        GRAMMAR_URLS["toml"]="https://github.com/tree-sitter-grammars/tree-sitter-toml|master"
+
+        # Build list of grammars to install
+        GRAMMARS=()
+        [[ "$GRAMMAR_BASH" == "true" ]] && GRAMMARS+=("bash")
+        [[ "$GRAMMAR_JSON" == "true" ]] && GRAMMARS+=("json")
+        [[ "$GRAMMAR_JSONC" == "true" ]] && GRAMMARS+=("jsonc")
+        [[ "$GRAMMAR_TOML" == "true" ]] && GRAMMARS+=("toml")
+
+        if [[ ${#GRAMMARS[@]} -eq 0 ]]; then
+          echo "No grammars selected for installation"
+          echo "installed=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "Grammars to install: ${GRAMMARS[*]}"
+
+        # Create temporary directory
+        TMPDIR=$(mktemp -d)
+        trap "rm -rf $TMPDIR" EXIT
+
+        INSTALLED=()
+
+        for grammar in "${GRAMMARS[@]}"; do
+          echo ""
+          echo "::group::Building tree-sitter-${grammar}"
+          cd "$TMPDIR"
+
+          # Parse the URL mapping
+          IFS='|' read -r REPO_URL BRANCH URL_TYPE <<< "${GRAMMAR_URLS[$grammar]}"
+
+          # Download the grammar
+          if [[ "$URL_TYPE" == "direct" ]]; then
+            # Direct URL (e.g., GitLab archive URLs)
+            echo "Downloading from direct URL: ${REPO_URL}"
+            if ! curl -fsSL "$REPO_URL" -o "${grammar}.zip"; then
+              echo "::error::Failed to download tree-sitter-${grammar} from ${REPO_URL}"
+              exit 1
+            fi
+          else
+            # GitHub-style archive URL
+            echo "Downloading from GitHub: ${REPO_URL} (branch: ${BRANCH})"
+            if ! curl -fsSL "${REPO_URL}/archive/refs/heads/${BRANCH}.zip" -o "${grammar}.zip"; then
+              # Try alternative branch (main vs master)
+              ALT_BRANCH=$([[ "$BRANCH" == "master" ]] && echo "main" || echo "master")
+              echo "Branch ${BRANCH} not found, trying ${ALT_BRANCH}..."
+              if ! curl -fsSL "${REPO_URL}/archive/refs/heads/${ALT_BRANCH}.zip" -o "${grammar}.zip"; then
+                echo "::error::Failed to download tree-sitter-${grammar} from ${REPO_URL}"
+                exit 1
+              fi
+              BRANCH="$ALT_BRANCH"
+            fi
+          fi
+
+          # Extract and build
+          unzip -q "${grammar}.zip"
+          cd "tree-sitter-${grammar}-${BRANCH}"
+
+          echo "Compiling parser..."
+          gcc -fPIC -I./src -c src/parser.c -o parser.o
+
+          OBJECTS="parser.o"
+          if [[ -f src/scanner.c ]]; then
+            echo "Compiling scanner..."
+            gcc -fPIC -I./src -c src/scanner.c -o scanner.o
+            OBJECTS="parser.o scanner.o"
+          fi
+
+          echo "Linking shared library..."
+          gcc -shared -o "libtree-sitter-${grammar}.so" $OBJECTS
+
+          echo "Installing to ${INSTALL_PREFIX}/lib/"
+          sudo mkdir -p "${INSTALL_PREFIX}/lib"
+          sudo cp "libtree-sitter-${grammar}.so" "${INSTALL_PREFIX}/lib/"
+
+          INSTALLED+=("$grammar")
+          echo "::endgroup::"
+        done
+
+        # Update ldconfig
+        echo ""
+        echo "Updating library cache..."
+        sudo ldconfig
+
+        # Set outputs
+        INSTALLED_STR=$(IFS=','; echo "${INSTALLED[*]}")
+        echo "installed=${INSTALLED_STR}" >> "$GITHUB_OUTPUT"
+        echo ""
+        echo "✅ Successfully installed grammars: ${INSTALLED_STR}"
+
+    # Set up environment variables for installed grammars
+    - name: Configure grammar paths
+      if: steps.install-grammars.outputs.installed != ''
+      shell: bash
+      env:
+        INSTALL_PREFIX: ${{ inputs.grammar-install-prefix }}
+        INSTALLED: ${{ steps.install-grammars.outputs.installed }}
+        GRAMMAR_BASH: ${{ inputs.grammar-bash }}
+        GRAMMAR_JSON: ${{ inputs.grammar-json }}
+        GRAMMAR_JSONC: ${{ inputs.grammar-jsonc }}
+        GRAMMAR_TOML: ${{ inputs.grammar-toml }}
+      run: |
+        LIB_PATH="${INSTALL_PREFIX}/lib"
+
+        # Add to LD_LIBRARY_PATH if not already present
+        if [[ ":$LD_LIBRARY_PATH:" != *":${LIB_PATH}:"* ]]; then
+          echo "LD_LIBRARY_PATH=${LIB_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+        fi
+
+        # Set individual grammar path environment variables
+        [[ "$GRAMMAR_BASH" == "true" ]] && echo "TREE_SITTER_BASH_PATH=${LIB_PATH}/libtree-sitter-bash.so" >> "$GITHUB_ENV"
+        [[ "$GRAMMAR_JSON" == "true" ]] && echo "TREE_SITTER_JSON_PATH=${LIB_PATH}/libtree-sitter-json.so" >> "$GITHUB_ENV"
+        [[ "$GRAMMAR_JSONC" == "true" ]] && echo "TREE_SITTER_JSONC_PATH=${LIB_PATH}/libtree-sitter-jsonc.so" >> "$GITHUB_ENV"
+        [[ "$GRAMMAR_TOML" == "true" ]] && echo "TREE_SITTER_TOML_PATH=${LIB_PATH}/libtree-sitter-toml.so" >> "$GITHUB_ENV"
+
+        echo "Grammar library paths configured"
