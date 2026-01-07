@@ -6,28 +6,33 @@ This action wraps the official [`tree-sitter/setup-action`](https://github.com/t
 
 ## Features
 
-- 🌲 Uses official `tree-sitter/setup-action` for library and CLI installation
-- 📦 Installs grammar shared libraries (`.so` files) for selected languages
-- ⚡ Caching support via the official action
-- 🔧 Configures environment variables (`TREE_SITTER_*_PATH`) for each grammar
-- 🐧 Linux support (Ubuntu)
-
+  - 🌲 Uses official `tree-sitter/setup-action` for library and CLI installation
+  - 📦 Installs grammar shared libraries (`.so` files) for selected languages
+  - ⚡ Caching support via the official action
+  - 🔧 Configures environment variables (`TREE_SITTER_*_PATH`) for each grammar
+  - 🐧 Linux support (Ubuntu)
 ## Supported Grammars
 
-| Grammar | Input           | Repository                                                                                        |
-|---------|-----------------|---------------------------------------------------------------------------------------------------|
-| Bash    | `grammar-bash`  | [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)                   |
-| JSON    | `grammar-json`  | [tree-sitter/tree-sitter-json](https://github.com/tree-sitter/tree-sitter-json)                   |
-| JSONC   | `grammar-jsonc` | [WhyNotHugo/tree-sitter-jsonc](https://gitlab.com/WhyNotHugo/tree-sitter-jsonc)                   |
-| TOML    | `grammar-toml`  | [tree-sitter-grammars/tree-sitter-toml](https://github.com/tree-sitter-grammars/tree-sitter-toml) |
+| Grammar | Input | Repository |
+| --- | --- | --- |
+| Bash | `grammar-bash` | [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash) |
+| JSON | `grammar-json` | [tree-sitter/tree-sitter-json](https://github.com/tree-sitter/tree-sitter-json) |
+| JSONC | `grammar-jsonc` | [WhyNotHugo/tree-sitter-jsonc](https://gitlab.com/WhyNotHugo/tree-sitter-jsonc) |
+| TOML | `grammar-toml` | [tree-sitter-grammars/tree-sitter-toml](https://github.com/tree-sitter-grammars/tree-sitter-toml) |
 
 ## Usage
 
+### Version Reference
+
+Use one of the following version references:
+  - `@v1` - Latest stable v1.x release (recommended for production)
+  - `@v1.0.0` - Specific version
+  - `@main` - Latest development version (may be unstable)
 ### Basic Usage
 
 Install tree-sitter library and selected grammars:
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -40,7 +45,7 @@ steps:
 
 ### All Options
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -75,11 +80,11 @@ steps:
       grammar-install-prefix: /usr/local
 ```
 
-### Using with tree_stump (Rust Backend)
+### Using with tree\_stump (Rust Backend)
 
-If you're using the [tree_stump](https://github.com/joker1007/tree_stump) gem for tree_haver's Rust backend on MRI Ruby, you need Rust installed to compile it:
+If you're using the [tree\_stump](https://github.com/joker1007/tree_stump) gem for tree\_haver's Rust backend on MRI Ruby, you need Rust installed to compile it:
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -103,11 +108,11 @@ steps:
 
 ### Using with jtreesitter (JRuby Java Backend)
 
-For JRuby workflows using tree_haver's Java backend with [jtreesitter](https://github.com/tree-sitter/java-tree-sitter):
+For JRuby workflows using tree\_haver's Java backend with [jtreesitter](https://github.com/tree-sitter/java-tree-sitter):
 
 > **Note**: Setting `setup-jtreesitter: true` automatically installs Java JDK - you don't need to also set `setup-java: true`.
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -135,9 +140,9 @@ steps:
 
 ### Using with Ruby Gems
 
-This action is designed to work with the [tree_haver](https://github.com/kettle-rb/tree_haver) gem and the `*-merge` gem family for AST-based file merging:
+This action is designed to work with the [tree\_haver](https://github.com/kettle-rb/tree_haver) gem and the `*-merge` gem family for AST-based file merging:
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -167,7 +172,7 @@ steps:
 ## Outputs
 
 | Output | Description |
-|--------|-------------|
+| --- | --- |
 | `grammars-installed` | Comma-separated list of installed grammar names |
 | `lib-path` | Path to installed grammar libraries |
 | `rust-installed` | Whether Rust toolchain was installed (`true`/`false`) |
@@ -177,7 +182,7 @@ steps:
 
 ### Example: Using Outputs
 
-```yaml
+``` yaml
 steps:
   - uses: actions/checkout@v4
 
@@ -201,53 +206,51 @@ The action automatically sets environment variables for each installed component
 
 ### Grammar Environment Variables
 
-| Variable                 | Example Value                                |
-|--------------------------|----------------------------------------------|
-| `TREE_SITTER_BASH_PATH`  | `/usr/local/lib/libtree-sitter-bash.so`      |
-| `TREE_SITTER_JSON_PATH`  | `/usr/local/lib/libtree-sitter-json.so`      |
-| `TREE_SITTER_JSONC_PATH` | `/usr/local/lib/libtree-sitter-jsonc.so`     |
-| `TREE_SITTER_TOML_PATH`  | `/usr/local/lib/libtree-sitter-toml.so`      |
-| `LD_LIBRARY_PATH`        | Updated to include grammar library directory |
+| Variable | Example Value |
+| --- | --- |
+| `TREE_SITTER_BASH_PATH` | `/usr/local/lib/libtree-sitter-bash.so` |
+| `TREE_SITTER_JSON_PATH` | `/usr/local/lib/libtree-sitter-json.so` |
+| `TREE_SITTER_JSONC_PATH` | `/usr/local/lib/libtree-sitter-jsonc.so` |
+| `TREE_SITTER_TOML_PATH` | `/usr/local/lib/libtree-sitter-toml.so` |
+| `LD_LIBRARY_PATH` | Updated to include grammar library directory |
 
 ### Java/jtreesitter Environment Variables
 
-| Variable                    | Example Value                                      |
-|-----------------------------|---------------------------------------------------|
-| `TREE_SITTER_JAVA_JARS_DIR` | `/usr/local/share/java`                           |
-| `CLASSPATH`                 | `/usr/local/share/java/jtreesitter-0.24.0.jar`    |
-| `JAVA_HOME`                 | Set by `actions/setup-java`                       |
+| Variable | Example Value |
+| --- | --- |
+| `TREE_SITTER_JAVA_JARS_DIR` | `/usr/local/share/java` |
+| `CLASSPATH` | `/usr/local/share/java/jtreesitter-0.24.0.jar` |
+| `JAVA_HOME` | Set by `actions/setup-java` |
 
-These environment variables are used by [tree_haver](https://github.com/kettle-rb/tree_haver) to locate grammar libraries and Java JARs.
+These environment variables are used by [tree\_haver](https://github.com/kettle-rb/tree_haver) to locate grammar libraries and Java JARs.
 
 ## Requirements
 
-- **Linux** (Ubuntu) - macOS and Windows support may be added in the future
-- **GCC** - For compiling grammar shared libraries
-- **sudo** - For installing to system directories
-
+  - **Linux** (Ubuntu) - macOS and Windows support may be added in the future
+  - **GCC** - For compiling grammar shared libraries
+  - **sudo** - For installing to system directories
 ## How It Works
 
-1. **Java Setup** (optional): Installs Java JDK via `actions/setup-java` if `setup-java` or `setup-jtreesitter` is enabled
-2. **jtreesitter Setup** (optional): Downloads jtreesitter JAR from Maven Central for JRuby's Java backend
-3. **Rust Setup** (optional): Installs Rust toolchain via `dtolnay/rust-toolchain` if `setup-rust` is enabled
-4. **Tree-sitter Setup**: Uses the official `tree-sitter/setup-action` to install the tree-sitter library and optionally the CLI
-5. **Grammar Download**: Downloads grammar source from GitHub/GitLab repositories
-6. **Grammar Build**: Compiles grammar parser.c (and scanner.c if present) to a shared library
-7. **Installation**: Installs the `.so` file to the specified prefix (default: `/usr/local/lib`)
-8. **Configuration**: Sets up environment variables for grammar and JAR discovery
-
+1.  **Java Setup** (optional): Installs Java JDK via `actions/setup-java` if `setup-java` or `setup-jtreesitter` is enabled
+2.  **jtreesitter Setup** (optional): Downloads jtreesitter JAR from Maven Central for JRuby's Java backend
+3.  **Rust Setup** (optional): Installs Rust toolchain via `dtolnay/rust-toolchain` if `setup-rust` is enabled
+4.  **Tree-sitter Setup**: Uses the official `tree-sitter/setup-action` to install the tree-sitter library and optionally the CLI
+5.  **Grammar Download**: Downloads grammar source from GitHub/GitLab repositories
+6.  **Grammar Build**: Compiles grammar parser.c (and scanner.c if present) to a shared library
+7.  **Installation**: Installs the `.so` file to the specified prefix (default: `/usr/local/lib`)
+8.  **Configuration**: Sets up environment variables for grammar and JAR discovery
 ## Comparison with tree-sitter/setup-action
 
-| Feature               | tree-sitter/setup-action | ts-grammar-action         |
-|-----------------------|--------------------------|---------------------------|
-| Library installation  | ✅                        | ✅ (via delegation)        |
-| CLI installation      | ✅                        | ✅ (via delegation)        |
-| Caching               | ✅                        | ✅ (via delegation)        |
-| Grammar installation  | ❌                        | ✅                         |
-| Rust toolchain        | ✅ (for CLI only)         | ✅ (for tree_stump gem)    |
-| Java JDK              | ❌                        | ✅                         |
-| jtreesitter JAR       | ❌                        | ✅                         |
-| Environment variables | Library paths only       | Library + grammar + Java  |
+| Feature | tree-sitter/setup-action | ts-grammar-action |
+| --- | --- | --- |
+| Library installation | ✅ | ✅ (via delegation) |
+| CLI installation | ✅ | ✅ (via delegation) |
+| Caching | ✅ | ✅ (via delegation) |
+| Grammar installation | ❌ | ✅ |
+| Rust toolchain | ✅ (for CLI only) | ✅ (for tree\_stump gem) |
+| Java JDK | ❌ | ✅ |
+| jtreesitter JAR | ❌ | ✅ |
+| Environment variables | Library paths only | Library + grammar + Java |
 
 ## Related Projects
 
@@ -258,21 +261,45 @@ This action specifically facilitates testing many of the gems in the merge gem f
 
 The `*-merge` gem family provides intelligent, AST-based merging for various file formats. At the foundation is [tree_haver][tree_haver], which provides a unified cross-Ruby parsing API that works seamlessly across MRI, JRuby, and TruffleRuby.
 
-| Gem                                      | Format   | Parser Backend(s)                                                                                   | Description                                                                      |
-|------------------------------------------|----------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| [tree_haver][tree_haver]                 | Multi    | MRI C, Rust, FFI, Java, Prism, Psych, Commonmarker, Markly, Citrus                                  | **Foundation**: Cross-Ruby adapter for parsing libraries (like Faraday for HTTP) |
-| [ast-merge][ast-merge]                   | Text     | internal                                                                                            | **Infrastructure**: Shared base classes and merge logic for all `*-merge` gems   |
-| [prism-merge][prism-merge]               | Ruby     | [Prism][prism]                                                                                      | Smart merge for Ruby source files                                                |
-| [psych-merge][psych-merge]               | YAML     | [Psych][psych]                                                                                      | Smart merge for YAML files                                                       |
-| [json-merge][json-merge]                 | JSON     | [tree-sitter-json][ts-json] (via tree_haver)                                                        | Smart merge for JSON files                                                       |
-| [jsonc-merge][jsonc-merge]               | JSONC    | [tree-sitter-jsonc][ts-jsonc] (via tree_haver)                                                      | ⚠️ Proof of concept; Smart merge for JSON with Comments                          |
-| [bash-merge][bash-merge]                 | Bash     | [tree-sitter-bash][ts-bash] (via tree_haver)                                                        | Smart merge for Bash scripts                                                     |
-| [rbs-merge][rbs-merge]                   | RBS      | [RBS][rbs]                                                                                          | Smart merge for Ruby type signatures                                             |
-| [dotenv-merge][dotenv-merge]             | Dotenv   | internal                                                                                            | Smart merge for `.env` files                                                     |
-| [toml-merge][toml-merge]                 | TOML     | [Citrus + toml-rb][toml-rb] (default, via tree_haver), [tree-sitter-toml][ts-toml] (via tree_haver) | Smart merge for TOML files                                                       |
-| [markdown-merge][markdown-merge]         | Markdown | [Commonmarker][commonmarker] / [Markly][markly] (via tree_haver)                                    | **Foundation**: Shared base for Markdown mergers with inner code block merging   |
-| [markly-merge][markly-merge]             | Markdown | [Markly][markly] (via tree_haver)                                                                   | Smart merge for Markdown (CommonMark via cmark-gfm C)                            |
-| [commonmarker-merge][commonmarker-merge] | Markdown | [Commonmarker][commonmarker] (via tree_haver)                                                       | Smart merge for Markdown (CommonMark via comrak Rust)                            |
+| Gem                                      | Language<br>/ Format | Parser Backend(s)                                                                                   | Description                                                                      |
+|------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| [tree_haver][tree_haver]                 | Multi                | MRI C, Rust, FFI, Java, Prism, Psych, Commonmarker, Markly, Citrus                                  | **Foundation**: Cross-Ruby adapter for parsing libraries (like Faraday for HTTP) |
+| [ast-merge][ast-merge]                   | Text                 | internal                                                                                            | **Infrastructure**: Shared base classes and merge logic for all `*-merge` gems   |
+| [bash-merge][bash-merge]                 | Bash                 | [tree-sitter-bash][ts-bash] (via tree_haver)                                                        | Smart merge for Bash scripts                                                     |
+| [commonmarker-merge][commonmarker-merge] | Markdown             | [Commonmarker][commonmarker] (via tree_haver)                                                       | Smart merge for Markdown (CommonMark via comrak Rust)                            |
+| [dotenv-merge][dotenv-merge]             | Dotenv               | internal                                                                                            | Smart merge for `.env` files                                                     |
+| [json-merge][json-merge]                 | JSON                 | [tree-sitter-json][ts-json] (via tree_haver)                                                        | Smart merge for JSON files                                                       |
+| [jsonc-merge][jsonc-merge]               | JSONC                | [tree-sitter-jsonc][ts-jsonc] (via tree_haver)                                                      | ⚠️ Proof of concept; Smart merge for JSON with Comments                          |
+| [markdown-merge][markdown-merge]         | Markdown             | [Commonmarker][commonmarker] / [Markly][markly] (via tree_haver)                                    | **Foundation**: Shared base for Markdown mergers with inner code block merging   |
+| [markly-merge][markly-merge]             | Markdown             | [Markly][markly] (via tree_haver)                                                                   | Smart merge for Markdown (CommonMark via cmark-gfm C)                            |
+| [prism-merge][prism-merge]               | Ruby                 | [Prism][prism] (`prism` std lib gem)                                                                | Smart merge for Ruby source files                                                |
+| [psych-merge][psych-merge]               | YAML                 | [Psych][psych] (`psych` std lib gem)                                                                | Smart merge for YAML files                                                       |
+| [rbs-merge][rbs-merge]                   | RBS                  | [tree-sitter-bash][ts-rbs] (via tree_haver), [RBS][rbs] (`rbs` std lib gem)                         | Smart merge for Ruby type signatures                                             |
+| [toml-merge][toml-merge]                 | TOML                 | [Citrus + toml-rb][toml-rb] (default, via tree_haver), [tree-sitter-toml][ts-toml] (via tree_haver) | Smart merge for TOML files                                                       |
+
+#### Backend Platform Compatibility
+
+tree_haver supports multiple parsing backends, but not all backends work on all Ruby platforms:
+
+| Platform 👉️<br> TreeHaver Backend 👇️         | MRI | JRuby | TruffleRuby | Notes                                               |
+|------------------------------------------------|:---:|:-----:|:-----------:|-----------------------------------------------------|
+| **MRI** ([ruby_tree_sitter][ruby_tree_sitter]) |  ✅  |   ❌   |      ❌      | C extension, MRI only                               |
+| **Rust** ([tree_stump][tree_stump])            |  ✅  |   ❌   |      ❌      | Rust extension via magnus/rb-sys, MRI only          |
+| **FFI**                                        |  ✅  |   ✅   |      ❌      | TruffleRuby's FFI doesn't support `STRUCT_BY_VALUE` |
+| **Java** ([jtreesitter][jtreesitter])          |  ❌  |   ✅   |      ❌      | JRuby only, requires grammar JARs                   |
+| **Prism**                                      |  ✅  |   ✅   |      ✅      | Ruby parsing, stdlib in Ruby 3.4+                   |
+| **Psych**                                      |  ✅  |   ✅   |      ✅      | YAML parsing, stdlib                                |
+| **Citrus**                                     |  ✅  |   ✅   |      ✅      | Pure Ruby, no native dependencies                   |
+| **Commonmarker**                               |  ✅  |   ❌   |      ❓      | Rust extension for Markdown                         |
+| **Markly**                                     |  ✅  |   ❌   |      ❓      | C extension for Markdown                            |
+
+**Legend**: ✅ = Works, ❌ = Does not work, ❓ = Untested
+
+**Why some backends don't work on certain platforms**:
+
+- **JRuby**: Runs on the JVM; cannot load native C/Rust extensions (`.so` files)
+- **TruffleRuby**: Has C API emulation via Sulong/LLVM, but it doesn't expose all MRI internals that native extensions require (e.g., `RBasic.flags`, `rb_gc_writebarrier`)
+- **FFI on TruffleRuby**: TruffleRuby's FFI implementation doesn't support returning structs by value, which tree-sitter's C API requires
 
 **Example implementations** for the gem templating use case:
 
@@ -301,6 +328,7 @@ The `*-merge` gem family provides intelligent, AST-based merging for various fil
 [ts-json]: https://github.com/tree-sitter/tree-sitter-json
 [ts-jsonc]: https://gitlab.com/WhyNotHugo/tree-sitter-jsonc
 [ts-bash]: https://github.com/tree-sitter/tree-sitter-bash
+[ts-rbs]: https://github.com/joker1007/tree-sitter-rbs
 [ts-toml]: https://github.com/tree-sitter-grammars/tree-sitter-toml
 [dotenv]: https://github.com/bkeepers/dotenv
 [rbs]: https://github.com/ruby/rbs
@@ -330,8 +358,8 @@ You can support the development of kettle-rb tools via
 [Open Collective](https://opencollective.com/kettle-rb)
 and [Tidelift](https://tidelift.com/subscription/pkg/rubygems-ts-grammar-action?utm_source=rubygems-ts-grammar-action&utm_medium=referral&utm_campaign=readme).
 
-| 📍 NOTE                                                                                                                                                                                                              |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 📍 NOTE |
+| --- |
 | If doing a sponsorship in the form of donation is problematic for your company <br/> from an accounting standpoint, we'd recommend the use of Tidelift, <br/> where you can get a support-like subscription instead. |
 
 ### Open Collective for Individuals

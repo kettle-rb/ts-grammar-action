@@ -175,6 +175,22 @@ runs:
       run: |
         set -euo pipefail
 
+        # Diagnostic: Check for tree-sitter library and headers
+        echo "::group::Diagnostics - tree-sitter installation"
+        echo "Checking for libtree-sitter..."
+        find /usr -name "libtree-sitter*" 2>/dev/null || echo "No libtree-sitter found in /usr"
+        ls -la /usr/local/lib/libtree-sitter* 2>/dev/null || echo "No libtree-sitter in /usr/local/lib"
+        
+        echo ""
+        echo "Checking for tree-sitter headers..."
+        find /usr -name "parser.h" -path "*/tree_sitter/*" 2>/dev/null || echo "No tree_sitter/parser.h found"
+        ls -la /usr/local/include/tree_sitter/ 2>/dev/null || echo "No /usr/local/include/tree_sitter/"
+        
+        echo ""
+        echo "Checking LD_LIBRARY_PATH..."
+        echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-<not set>}"
+        echo "::endgroup::"
+
         # Grammar URL mapping
         # Format: "url|branch|type" where type is optional (default: github, alternative: direct)
         declare -A GRAMMAR_URLS
@@ -240,17 +256,32 @@ runs:
           cd "tree-sitter-${grammar}-${BRANCH}"
 
           echo "Compiling parser..."
-          gcc -fPIC -I./src -c src/parser.c -o parser.o
+          # Include tree-sitter headers from the installed location AND the grammar's src dir
+          # The grammar's src/tree_sitter/parser.h defines the language ABI
+          gcc -fPIC -I./src -I/usr/local/include -c src/parser.c -o parser.o
 
           OBJECTS="parser.o"
           if [[ -f src/scanner.c ]]; then
             echo "Compiling scanner..."
-            gcc -fPIC -I./src -c src/scanner.c -o scanner.o
+            gcc -fPIC -I./src -I/usr/local/include -c src/scanner.c -o scanner.o
             OBJECTS="parser.o scanner.o"
           fi
 
           echo "Linking shared library..."
+          # Link the grammar as a shared library
+          # Note: We don't link against libtree-sitter because ruby_tree_sitter
+          # bundles its own tree-sitter. The grammar just needs to export the
+          # tree_sitter_<lang> symbol which returns a TSLanguage*.
           gcc -shared -o "libtree-sitter-${grammar}.so" $OBJECTS
+
+          # Verify the exported symbol exists
+          echo "Verifying exported symbol..."
+          if nm -D "libtree-sitter-${grammar}.so" | grep -q "tree_sitter_${grammar}"; then
+            echo "✓ Symbol tree_sitter_${grammar} found"
+          else
+            echo "::warning::Symbol tree_sitter_${grammar} not found in library!"
+            nm -D "libtree-sitter-${grammar}.so" | head -20
+          fi
 
           echo "Installing to ${INSTALL_PREFIX}/lib/"
           sudo mkdir -p "${INSTALL_PREFIX}/lib"
@@ -283,17 +314,131 @@ runs:
         GRAMMAR_JSONC: ${{ inputs.grammar-jsonc }}
         GRAMMAR_TOML: ${{ inputs.grammar-toml }}
       run: |
+        set -euo pipefail
+        
+        echo "::group::Configuring grammar environment variables"
+        
         LIB_PATH="${INSTALL_PREFIX}/lib"
+        
+        echo "Current environment:"
+        echo "  INSTALL_PREFIX: ${INSTALL_PREFIX}"
+        echo "  LIB_PATH: ${LIB_PATH}"
+        echo "  INSTALLED: ${INSTALLED}"
+        echo "  GRAMMAR_BASH: ${GRAMMAR_BASH}"
+        echo "  GRAMMAR_JSON: ${GRAMMAR_JSON}"
+        echo "  GRAMMAR_JSONC: ${GRAMMAR_JSONC}"
+        echo "  GRAMMAR_TOML: ${GRAMMAR_TOML}"
+        echo "  Current LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-<not set>}"
+        
+        echo ""
+        echo "Verifying installed grammar files:"
+        ls -la "${LIB_PATH}"/libtree-sitter-*.so 2>/dev/null || echo "No grammar libraries found in ${LIB_PATH}"
+        
+        echo ""
+        echo "Setting environment variables..."
 
         # Add to LD_LIBRARY_PATH if not already present
         if [[ ":$LD_LIBRARY_PATH:" != *":${LIB_PATH}:"* ]]; then
           echo "LD_LIBRARY_PATH=${LIB_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          echo "  ✓ Set LD_LIBRARY_PATH=${LIB_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        else
+          echo "  ℹ LD_LIBRARY_PATH already contains ${LIB_PATH}"
         fi
 
         # Set individual grammar path environment variables
-        [[ "$GRAMMAR_BASH" == "true" ]] && echo "TREE_SITTER_BASH_PATH=${LIB_PATH}/libtree-sitter-bash.so" >> "$GITHUB_ENV"
-        [[ "$GRAMMAR_JSON" == "true" ]] && echo "TREE_SITTER_JSON_PATH=${LIB_PATH}/libtree-sitter-json.so" >> "$GITHUB_ENV"
-        [[ "$GRAMMAR_JSONC" == "true" ]] && echo "TREE_SITTER_JSONC_PATH=${LIB_PATH}/libtree-sitter-jsonc.so" >> "$GITHUB_ENV"
-        [[ "$GRAMMAR_TOML" == "true" ]] && echo "TREE_SITTER_TOML_PATH=${LIB_PATH}/libtree-sitter-toml.so" >> "$GITHUB_ENV"
+        if [[ "$GRAMMAR_BASH" == "true" ]]; then
+          echo "TREE_SITTER_BASH_PATH=${LIB_PATH}/libtree-sitter-bash.so" >> "$GITHUB_ENV"
+          echo "  ✓ Set TREE_SITTER_BASH_PATH=${LIB_PATH}/libtree-sitter-bash.so"
+        fi
+        
+        if [[ "$GRAMMAR_JSON" == "true" ]]; then
+          echo "TREE_SITTER_JSON_PATH=${LIB_PATH}/libtree-sitter-json.so" >> "$GITHUB_ENV"
+          echo "  ✓ Set TREE_SITTER_JSON_PATH=${LIB_PATH}/libtree-sitter-json.so"
+        fi
+        
+        if [[ "$GRAMMAR_JSONC" == "true" ]]; then
+          echo "TREE_SITTER_JSONC_PATH=${LIB_PATH}/libtree-sitter-jsonc.so" >> "$GITHUB_ENV"
+          echo "  ✓ Set TREE_SITTER_JSONC_PATH=${LIB_PATH}/libtree-sitter-jsonc.so"
+        fi
+        
+        if [[ "$GRAMMAR_TOML" == "true" ]]; then
+          echo "TREE_SITTER_TOML_PATH=${LIB_PATH}/libtree-sitter-toml.so" >> "$GITHUB_ENV"
+          echo "  ✓ Set TREE_SITTER_TOML_PATH=${LIB_PATH}/libtree-sitter-toml.so"
+        fi
 
-        echo "Grammar library paths configured"
+        echo ""
+        echo "::endgroup::"
+        echo "✅ Grammar library paths configured"
+
+    # Verify grammar environment in a separate step
+    # This step runs in a fresh shell to verify that GITHUB_ENV was properly updated
+    - name: Verify grammar environment
+      if: steps.install-grammars.outputs.installed != ''
+      shell: bash
+      env:
+        INSTALL_PREFIX: ${{ inputs.grammar-install-prefix }}
+      run: |
+        set -euo pipefail
+        
+        echo "::group::Verifying grammar environment"
+        
+        LIB_PATH="${INSTALL_PREFIX}/lib"
+        
+        echo "Environment variables that should have been set:"
+        echo "  LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-<not set>}"
+        echo "  TREE_SITTER_BASH_PATH: ${TREE_SITTER_BASH_PATH:-<not set>}"
+        echo "  TREE_SITTER_JSON_PATH: ${TREE_SITTER_JSON_PATH:-<not set>}"
+        echo "  TREE_SITTER_JSONC_PATH: ${TREE_SITTER_JSONC_PATH:-<not set>}"
+        echo "  TREE_SITTER_TOML_PATH: ${TREE_SITTER_TOML_PATH:-<not set>}"
+        
+        echo ""
+        echo "Verifying grammar files exist and are accessible:"
+        ERRORS=0
+        
+        for so_file in "${LIB_PATH}"/libtree-sitter-*.so; do
+          if [[ -f "$so_file" ]]; then
+            echo "  ✓ Found: $so_file"
+            
+            # Extract grammar name (e.g., "bash" from "libtree-sitter-bash.so")
+            grammar_name=$(basename "$so_file" .so | sed 's/^libtree-sitter-//')
+            env_var="TREE_SITTER_${grammar_name^^}_PATH"
+            
+            # Check if corresponding env var is set
+            if [[ -n "${!env_var:-}" ]]; then
+              echo "    ✓ ${env_var} is set to: ${!env_var}"
+            else
+              echo "    ✗ WARNING: ${env_var} is not set!"
+              ERRORS=$((ERRORS + 1))
+            fi
+            
+            # Check if file is readable
+            if [[ -r "$so_file" ]]; then
+              echo "    ✓ File is readable"
+            else
+              echo "    ✗ WARNING: File is not readable!"
+              ERRORS=$((ERRORS + 1))
+            fi
+            
+            # Check for exported symbol
+            if command -v nm >/dev/null 2>&1; then
+              symbol="tree_sitter_${grammar_name}"
+              if nm -D "$so_file" 2>/dev/null | grep -q "$symbol"; then
+                echo "    ✓ Symbol ${symbol} is exported"
+              else
+                echo "    ✗ WARNING: Symbol ${symbol} not found in library!"
+                ERRORS=$((ERRORS + 1))
+              fi
+            fi
+          fi
+        done
+        
+        echo ""
+        if [[ $ERRORS -eq 0 ]]; then
+          echo "::endgroup::"
+          echo "✅ All grammars verified successfully"
+        else
+          echo "::endgroup::"
+          echo "::warning::Some grammar verification checks failed (${ERRORS} issues found)"
+          echo "This may cause runtime issues when trying to load the grammars"
+        fi
+
