@@ -1,32 +1,35 @@
 # ts-grammar-action
 
-A GitHub Action for installing tree-sitter and language grammars.
+A GitHub Action for installing tree-sitter and language grammars via [tsdl](https://github.com/stackmystack/tsdl).
 
-This action wraps the official [`tree-sitter/setup-action`](https://github.com/tree-sitter/setup-action) and adds support for installing language-specific grammar shared libraries.
+This action wraps the official [`tree-sitter/setup-action`](https://github.com/tree-sitter/setup-action) and uses `tsdl` to build and install language-specific grammar shared libraries.
 
 ## Features
 
   - 🌲 Uses official `tree-sitter/setup-action` for library and CLI installation
-  - 📦 Installs grammar shared libraries (`.so` files) for selected languages
+  - 📦 Builds grammar shared libraries (`.so` files) via [tsdl](https://github.com/stackmystack/tsdl)
+  - 📌 Pinned grammar versions by default (override with `grammar-*-ref` inputs)
   - ⚡ Caching support via the official action
   - 🔧 Configures environment variables (`TREE_SITTER_*_PATH`) for each grammar
-  - 🐧 Linux support (Ubuntu)
+  - 🐧 Linux and macOS support
 ## Supported Grammars
 
 | Grammar | Input | Repository |
 | --- | --- | --- |
 | Bash | `grammar-bash` | [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash) |
 | JSON | `grammar-json` | [tree-sitter/tree-sitter-json](https://github.com/tree-sitter/tree-sitter-json) |
-| JSONC | `grammar-jsonc` | [WhyNotHugo/tree-sitter-jsonc](https://gitlab.com/WhyNotHugo/tree-sitter-jsonc) |
 | TOML | `grammar-toml` | [tree-sitter-grammars/tree-sitter-toml](https://github.com/tree-sitter-grammars/tree-sitter-toml) |
+| RBS | `grammar-rbs` | [joker1007/tree-sitter-rbs](https://github.com/joker1007/tree-sitter-rbs) |
+
+> **Note**: JSONC (JSON with Comments) is supported by the main `tree-sitter-json` grammar as of v0.24.0. A separate jsonc grammar is no longer needed.
 
 ## Usage
 
 ### Version Reference
 
 Use one of the following version references:
-  - `@v1` - Latest stable v1.x release (recommended for production)
-  - `@v1.0.0` - Specific version
+  - `@v2` - Latest stable v2.x release (recommended for production)
+  - `@v2.0.0` - Specific version
   - `@main` - Latest development version (may be unstable)
 ### Basic Usage
 
@@ -37,7 +40,7 @@ steps:
   - uses: actions/checkout@v4
 
   - name: Install tree-sitter with grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       grammar-bash: true
       grammar-toml: true
@@ -50,7 +53,7 @@ steps:
   - uses: actions/checkout@v4
 
   - name: Install tree-sitter with grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       # Tree-sitter library/CLI options
       install-cli: false          # Install tree-sitter CLI (default: false)
@@ -70,11 +73,18 @@ steps:
       jtreesitter-version: "0.24.0"  # jtreesitter version (default: 0.24.0)
       jtreesitter-install-dir: /usr/local/share/java  # JAR install directory
 
+      # tsdl options
+      tsdl-version: v2.0.0       # tsdl version (default: v2.0.0)
+
       # Grammar selections (all default to false)
       grammar-bash: false
+      grammar-bash-ref: v0.25.1      # Pin grammar version
       grammar-json: false
-      grammar-jsonc: false
+      grammar-json-ref: v0.24.8
       grammar-toml: false
+      grammar-toml-ref: v0.7.0
+      grammar-rbs: false
+      grammar-rbs-ref: v0.2.2
 
       # Installation prefix (default: /usr/local)
       grammar-install-prefix: /usr/local
@@ -89,7 +99,7 @@ steps:
   - uses: actions/checkout@v4
 
   - name: Install tree-sitter with Rust and grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       setup-rust: true            # Install Rust toolchain
       rust-toolchain: stable      # Use stable Rust
@@ -117,7 +127,7 @@ steps:
   - uses: actions/checkout@v4
 
   - name: Install tree-sitter with Java and grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       setup-jtreesitter: true     # Automatically installs Java JDK + jtreesitter JAR
       java-version: "23"          # Java version to install
@@ -147,7 +157,7 @@ steps:
   - uses: actions/checkout@v4
 
   - name: Install tree-sitter and grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       grammar-toml: true
       grammar-bash: true
@@ -166,7 +176,6 @@ steps:
       # TREE_SITTER_TOML_PATH: /usr/local/lib/libtree-sitter-toml.so
       # TREE_SITTER_BASH_PATH: /usr/local/lib/libtree-sitter-bash.so
       # TREE_SITTER_JSON_PATH: /usr/local/lib/libtree-sitter-json.so
-      # TREE_SITTER_JSONC_PATH: /usr/local/lib/libtree-sitter-jsonc.so
 ```
 
 ## Outputs
@@ -175,6 +184,7 @@ steps:
 | --- | --- |
 | `grammars-installed` | Comma-separated list of installed grammar names |
 | `lib-path` | Path to installed grammar libraries |
+| `tsdl-version` | Installed tsdl version |
 | `rust-installed` | Whether Rust toolchain was installed (`true`/`false`) |
 | `java-installed` | Whether Java JDK was installed (`true`/`false`) |
 | `jtreesitter-installed` | Whether jtreesitter JAR was installed (`true`/`false`) |
@@ -188,7 +198,7 @@ steps:
 
   - name: Install grammars
     id: grammars
-    uses: kettle-rb/ts-grammar-action@v1
+    uses: kettle-rb/ts-grammar-action@v2
     with:
       grammar-toml: true
       grammar-json: true
@@ -210,8 +220,8 @@ The action automatically sets environment variables for each installed component
 | --- | --- |
 | `TREE_SITTER_BASH_PATH` | `/usr/local/lib/libtree-sitter-bash.so` |
 | `TREE_SITTER_JSON_PATH` | `/usr/local/lib/libtree-sitter-json.so` |
-| `TREE_SITTER_JSONC_PATH` | `/usr/local/lib/libtree-sitter-jsonc.so` |
 | `TREE_SITTER_TOML_PATH` | `/usr/local/lib/libtree-sitter-toml.so` |
+| `TREE_SITTER_RBS_PATH` | `/usr/local/lib/libtree-sitter-rbs.so` |
 | `LD_LIBRARY_PATH` | Updated to include grammar library directory |
 
 ### Java/jtreesitter Environment Variables
@@ -226,8 +236,7 @@ These environment variables are used by [tree\_haver](https://github.com/kettle-
 
 ## Requirements
 
-  - **Linux** (Ubuntu) - macOS and Windows support may be added in the future
-  - **GCC** - For compiling grammar shared libraries
+  - **Linux or macOS** - Windows support may be added in the future
   - **sudo** - For installing to system directories
 ## How It Works
 
@@ -235,10 +244,9 @@ These environment variables are used by [tree\_haver](https://github.com/kettle-
 2.  **jtreesitter Setup** (optional): Downloads jtreesitter JAR from Maven Central for JRuby's Java backend
 3.  **Rust Setup** (optional): Installs Rust toolchain via `dtolnay/rust-toolchain` if `setup-rust` is enabled
 4.  **Tree-sitter Setup**: Uses the official `tree-sitter/setup-action` to install the tree-sitter library and optionally the CLI
-5.  **Grammar Download**: Downloads grammar source from GitHub/GitLab repositories
-6.  **Grammar Build**: Compiles grammar parser.c (and scanner.c if present) to a shared library
-7.  **Installation**: Installs the `.so` file to the specified prefix (default: `/usr/local/lib`)
-8.  **Configuration**: Sets up environment variables for grammar and JAR discovery
+5.  **tsdl Install**: Downloads the [tsdl](https://github.com/stackmystack/tsdl) binary from GitHub releases
+6.  **Grammar Build**: Generates a `parsers.toml` config from inputs and runs `tsdl build` to compile grammars
+7.  **Configuration**: Sets up environment variables for grammar and JAR discovery
 ## Comparison with tree-sitter/setup-action
 
 | Feature | tree-sitter/setup-action | ts-grammar-action |
@@ -246,7 +254,8 @@ These environment variables are used by [tree\_haver](https://github.com/kettle-
 | Library installation | ✅ | ✅ (via delegation) |
 | CLI installation | ✅ | ✅ (via delegation) |
 | Caching | ✅ | ✅ (via delegation) |
-| Grammar installation | ❌ | ✅ |
+| Grammar installation | ❌ | ✅ (via [tsdl](https://github.com/stackmystack/tsdl)) |
+| Pinned grammar versions | ❌ | ✅ |
 | Rust toolchain | ✅ (for CLI only) | ✅ (for tree\_stump gem) |
 | Java JDK | ❌ | ✅ |
 | jtreesitter JAR | ❌ | ✅ |
@@ -269,12 +278,12 @@ The `*-merge` gem family provides intelligent, AST-based merging for various fil
 | [commonmarker-merge][commonmarker-merge] | Markdown             | [Commonmarker][commonmarker] (via tree_haver)                                                       | Smart merge for Markdown (CommonMark via comrak Rust)                            |
 | [dotenv-merge][dotenv-merge]             | Dotenv               | internal                                                                                            | Smart merge for `.env` files                                                     |
 | [json-merge][json-merge]                 | JSON                 | [tree-sitter-json][ts-json] (via tree_haver)                                                        | Smart merge for JSON files                                                       |
-| [jsonc-merge][jsonc-merge]               | JSONC                | [tree-sitter-jsonc][ts-jsonc] (via tree_haver)                                                      | ⚠️ Proof of concept; Smart merge for JSON with Comments                          |
+| [jsonc-merge][jsonc-merge]               | JSONC                | [tree-sitter-json][ts-json] (via tree_haver)                                                        | Smart merge for JSON with Comments                                               |
 | [markdown-merge][markdown-merge]         | Markdown             | [Commonmarker][commonmarker] / [Markly][markly] (via tree_haver)                                    | **Foundation**: Shared base for Markdown mergers with inner code block merging   |
 | [markly-merge][markly-merge]             | Markdown             | [Markly][markly] (via tree_haver)                                                                   | Smart merge for Markdown (CommonMark via cmark-gfm C)                            |
 | [prism-merge][prism-merge]               | Ruby                 | [Prism][prism] (`prism` std lib gem)                                                                | Smart merge for Ruby source files                                                |
 | [psych-merge][psych-merge]               | YAML                 | [Psych][psych] (`psych` std lib gem)                                                                | Smart merge for YAML files                                                       |
-| [rbs-merge][rbs-merge]                   | RBS                  | [tree-sitter-bash][ts-rbs] (via tree_haver), [RBS][rbs] (`rbs` std lib gem)                         | Smart merge for Ruby type signatures                                             |
+| [rbs-merge][rbs-merge]                   | RBS                  | [tree-sitter-rbs][ts-rbs] (via tree_haver), [RBS][rbs] (`rbs` std lib gem)                          | Smart merge for Ruby type signatures                                             |
 | [toml-merge][toml-merge]                 | TOML                 | [Citrus + toml-rb][toml-rb] (default, via tree_haver), [tree-sitter-toml][ts-toml] (via tree_haver) | Smart merge for TOML files                                                       |
 
 #### Backend Platform Compatibility
@@ -326,7 +335,6 @@ tree_haver supports multiple parsing backends, but not all backends work on all 
 [prism]: https://github.com/ruby/prism
 [psych]: https://github.com/ruby/psych
 [ts-json]: https://github.com/tree-sitter/tree-sitter-json
-[ts-jsonc]: https://gitlab.com/WhyNotHugo/tree-sitter-jsonc
 [ts-bash]: https://github.com/tree-sitter/tree-sitter-bash
 [ts-rbs]: https://github.com/joker1007/tree-sitter-rbs
 [ts-toml]: https://github.com/tree-sitter-grammars/tree-sitter-toml
@@ -562,5 +570,4 @@ Thanks for RTFM. ☺️
 [📄ilo-declaration]: https://www.ilo.org/declaration/lang--en/index.htm
 [📄ilo-declaration-img]: https://img.shields.io/badge/ILO_Fundamental_Principles-✓-259D6C.svg?style=flat
 
-[ts-jsonc]: https://gitlab.com/WhyNotHugo/tree-sitter-jsonc
 [dotenv]: https://github.com/bkeepers/dotenv

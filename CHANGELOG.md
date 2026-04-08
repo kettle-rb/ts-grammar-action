@@ -20,27 +20,29 @@ Please file a bug if you notice a violation of semantic versioning.
 
 ### Added
 
-- Enhanced diagnostic output in "Configure grammar paths" step
-  - Shows current environment state and all input variables
-  - Lists installed grammar files with full paths
-  - Confirms each environment variable being set with visual indicators (✓, ℹ)
-  - Reports when LD_LIBRARY_PATH already contains the library path
-- New "Verify grammar environment" step runs after configuration
-  - Verifies GITHUB_ENV updates persisted to new shell
-  - Shows all grammar-related environment variables
-  - Checks that grammar files exist and are readable
-  - Validates exported symbols using `nm` command
-  - Reports issues as warnings without failing the workflow
+- `tsdl-version` input to pin the tsdl binary version (default: v2.0.0)
+- `grammar-*-ref` inputs to pin each grammar to a specific version/tag/SHA
+  - `grammar-bash-ref` (default: v0.25.1)
+  - `grammar-json-ref` (default: v0.24.8)
+  - `grammar-toml-ref` (default: v0.7.0)
+  - `grammar-rbs-ref` (default: v0.2.2)
+- `tsdl-version` output reporting the installed tsdl version
 
 ### Changed
 
-### Deprecated
+- **BREAKING**: Grammar build now uses [tsdl](https://github.com/stackmystack/tsdl) instead of manual curl/unzip/gcc
+  - Removes dependency on GCC being available in the runner
+  - Grammars are built from pinned versions by default (previously used HEAD/master)
+  - Grammars hosted outside `tree-sitter/` org (toml, rbs) are handled via tsdl's `from` override
+- macOS support via tsdl's cross-platform binary releases
 
 ### Removed
 
-### Fixed
-
-### Security
+- Manual grammar download, compile, and link steps (replaced by tsdl)
+- Verbose diagnostic output in grammar installation step (tsdl provides its own progress)
+- `grammar-jsonc` and `grammar-jsonc-ref` inputs — the standalone tree-sitter-jsonc grammar
+  (WhyNotHugo/tree-sitter-jsonc) is archived and deprecated. JSONC is now supported by the
+  main tree-sitter-json grammar (v0.24.0+). Use `grammar-json: true` instead.
 
 ## [1.0.0] - 2025-12-29
 
